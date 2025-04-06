@@ -59,33 +59,33 @@ struct Order {
     double price;            // Limit price (for limit orders)
     uint64_t timestamp;      // When the order was placed
     OrderStatus status;      // Current status
-    
+
     // Constructor for a limit order
-    Order(std::string id, OrderSide s, std::string sym, 
+    Order(std::string id, OrderSide s, std::string sym,
           uint64_t sz, double prc, uint64_t time)
         : order_id(std::move(id)), side(s), type(OrderType::Limit),
           symbol(std::move(sym)), size(sz), filled_size(0),
           price(prc), timestamp(time), status(OrderStatus::New) {}
-    
+
     // Constructor for a market order
-    Order(std::string id, OrderSide s, std::string sym, 
+    Order(std::string id, OrderSide s, std::string sym,
           uint64_t sz, uint64_t time)
         : order_id(std::move(id)), side(s), type(OrderType::Market),
           symbol(std::move(sym)), size(sz), filled_size(0),
-          price(s == OrderSide::Buy ? std::numeric_limits<double>::max() 
+          price(s == OrderSide::Buy ? std::numeric_limits<double>::max()
                                   : 0.0),
           timestamp(time), status(OrderStatus::New) {}
-    
+
     // Remaining quantity
-    uint64_t remaining_size() const { 
-        return size - filled_size; 
+    uint64_t remaining_size() const {
+        return size - filled_size;
     }
-    
+
     // Check if order is completely filled
-    bool is_filled() const { 
-        return filled_size >= size; 
+    bool is_filled() const {
+        return filled_size >= size;
     }
-    
+
     // Update order after a fill
     void fill(uint64_t fill_size) {
         filled_size += fill_size;
@@ -121,28 +121,31 @@ struct SellOrderComparator {
 class OrderBook {
 public:
     explicit OrderBook(std::string symbol);
-    
+
     // Add a new order to the book
     void add_order(std::shared_ptr<Order> order);
-    
-    // Cancel an existing order
+
+    // Cancel an existing order - if there are multiple orders with the same ID, only cancels one instance
     bool cancel_order(const std::string& order_id);
-    
+
     // Match an incoming order against the book
     std::vector<Trade> match_order(std::shared_ptr<Order> order);
-    
+
     // Get the current best bid price
     double best_bid() const;
-    
+
     // Get the current best ask price
     double best_ask() const;
-    
+
+    // Get the total volume at a specific price level
+    uint64_t volume_at_price(OrderSide side, double price) const;
+
     // Get the symbol this order book is for
     const std::string& get_symbol() const { return symbol_; }
-    
+
     // Get all orders in the book
-    std::vector<std::shared_ptr<Order>> get_all_orders() const;
-    
+    std::pair<std::vector<std::shared_ptr<Order>>, std::vector<std::shared_ptr<Order>>> get_all_orders() const;
+
     // Print the current state of the order book
     void print() const;
 
@@ -150,13 +153,13 @@ private:
     std::string symbol_;
     std::vector<std::shared_ptr<Order>> buy_orders_;  // Sorted by price-time priority
     std::vector<std::shared_ptr<Order>> sell_orders_; // Sorted by price-time priority
-    std::unordered_map<std::string, std::shared_ptr<Order>> order_map_; // For fast lookup by ID
+    std::unordered_multimap<std::string, std::shared_ptr<Order>> order_map_; // For fast lookup by ID (supports duplicate IDs)
     std::atomic<uint64_t> last_update_time_;
-    
+
     // Helper methods to keep the order vectors sorted
     void sort_buy_orders();
     void sort_sell_orders();
-    
+
     // Remove filled orders from the book
     void remove_filled_orders();
 };

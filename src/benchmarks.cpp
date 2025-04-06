@@ -152,7 +152,6 @@ int main() {
             engine.add_order_book(symbol);
         }
 
-        // Add orders to each book
         for (int i = 0; i < 100; ++i) {
             const std::string& symbol = symbols[i % symbols.size()];
             OrderSide side = i % 2 == 0 ? OrderSide::Buy : OrderSide::Sell;
